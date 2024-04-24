@@ -1,4 +1,4 @@
-package gomagick
+package examples
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	gomagick "github.com/antalmiklos/go-magick"
 	"github.com/pkg/browser"
 	"gopkg.in/gographics/imagick.v3/imagick"
 )
@@ -23,7 +24,11 @@ func main() {
 		log.Fatal(err)
 	}
 	defer outfile.Close()
-	c, err := NewConverter(outfile, ConverterOptions{Compression: imagick.COMPRESSION_NO, CompressionQuality: 100, TargetFormat: FORMAT_JPG})
+	c, err := gomagick.NewConverter(outfile, gomagick.ConverterOptions{
+		Compression:        imagick.COMPRESSION_NO,
+		CompressionQuality: 100,
+		TargetFormat:       gomagick.FORMAT_JPG,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,7 +43,7 @@ func main() {
 	fmt.Println("conversion done in: ", time.Since((cstart)))
 	fmt.Println("starting rotation")
 	cstart = time.Now()
-	if err := c.Rotate(CCW); err != nil {
+	if err := c.Rotate(gomagick.CCW); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("rotation done in: ", time.Since((cstart)))
