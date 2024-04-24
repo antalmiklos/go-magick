@@ -1,4 +1,4 @@
-package gomagick
+package main
 
 import (
 	"bytes"
@@ -16,12 +16,20 @@ const FORMAT_JPG = "jpg"
 const FORMAT_PNG = "png"
 const FORMAT_TIF = "tiff"
 
+const CW float64 = 90
+const CCW float64 = 270
+
+type Rotator interface {
+	Rotate(deg float64) error
+}
+
 type Converter interface {
 	// eg os.file
 	io.Writer
 	io.Closer
 	io.Reader
 	Scaler
+	Rotator
 	Destroy()
 	//	Wand() *imagick.MagickWand
 	Convert() error
@@ -70,6 +78,12 @@ func NewConverter(output io.WriteCloser, opts ConverterOptions) (Converter, erro
 	return c, nil
 }
 
+func (i *imageConverter) Rotate(deg float64) error {
+	pw := imagick.NewPixelWand()
+	defer pw.Destroy()
+	return i.wand.RotateImage(pw, float64(deg))
+}
+
 func (i *imageConverter) Write(p []byte) (n int, err error) {
 	return i.writer.Write(p)
 }
@@ -94,6 +108,10 @@ func (i *imageConverter) ImageBlob() ([]byte, error) {
 // Deallocates all memory associated with the converter and destroys the MagicWand
 func (i *imageConverter) Destroy() {
 	imgNumber := i.wand.GetNumberImages()
+	if imgNumber == 0 {
+		i.wand.Destroy()
+		return
+	}
 	for j := 0; j < int(imgNumber); j++ {
 		img := i.wand.GetImageFromMagickWand()
 		if img == nil {
@@ -101,7 +119,6 @@ func (i *imageConverter) Destroy() {
 		}
 		i.wand.DestroyImage(img)
 	}
-	i.wand.Destroy()
 }
 
 func (j *imageConverter) WriteToFile(filename string) error {

@@ -1,1 +1,4 @@
 *.jpg
+*.cr3
+*.png
+test.go

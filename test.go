@@ -1,17 +1,19 @@
-package gomagick
+package main
 
 import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
+	"github.com/pkg/browser"
 	"gopkg.in/gographics/imagick.v3/imagick"
 )
 
-func Test() {
+func main() {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered in f", r)
+			fmt.Println("ImageMagick not properly installed, please consult the manual!", r)
 		}
 	}()
 	defer imagick.Terminate()
@@ -21,12 +23,28 @@ func Test() {
 		log.Fatal(err)
 	}
 	defer outfile.Close()
-	c, err := NewConverter(outfile, DefaultOptions())
+	c, err := NewConverter(outfile, ConverterOptions{Compression: imagick.COMPRESSION_NO, CompressionQuality: 100, TargetFormat: FORMAT_JPG})
 	if err != nil {
 		log.Fatal(err)
 	}
-	b, _ := os.ReadFile("a.jpg")
+	defer c.Destroy()
+	b, _ := os.ReadFile("a.cr3")
 	c.Read(b)
-	c.ScalePercent(100)
-	//	c.Destroy()
+	fmt.Println("starting conversion")
+	cstart := time.Now()
+	if err := c.Convert(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("conversion done in: ", time.Since((cstart)))
+	fmt.Println("starting rotation")
+	cstart = time.Now()
+	if err := c.Rotate(CCW); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("rotation done in: ", time.Since((cstart)))
+	fmt.Println("starting scaling")
+	cstart = time.Now()
+	c.ScalePercent(80)
+	fmt.Println("scaling done in: ", time.Since((cstart)))
+	browser.OpenFile(outfile.Name())
 }
