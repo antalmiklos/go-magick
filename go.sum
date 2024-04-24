@@ -1,0 +1,4 @@
+golang.org/x/image v0.15.0 h1:kOELfmgrmJlw4Cdb7g/QGuB3CvDrXbqEIww/pNtNBm8=
+golang.org/x/image v0.15.0/go.mod h1:HUYqC05R2ZcZ3ejNQsIHQDQiwWM4JBqmm6MKANTp4LE=
+gopkg.in/gographics/imagick.v3 v3.5.3 h1:Ho8/2Uu76Y1Z5P65dUBhh5ZeKS3ZcvYH12amWZNpSFA=
+gopkg.in/gographics/imagick.v3 v3.5.3/go.mod h1:+Q9nyA2xRZXrDyTtJ/eko+8V/5E7bWYs08ndkZp8UmA=
