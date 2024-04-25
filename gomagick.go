@@ -1,52 +1,19 @@
 package gomagick
 
 import (
-	"bytes"
-	"fmt"
-	"image"
-	"image/jpeg"
 	"io"
-	"os"
 
-	"golang.org/x/image/draw"
 	"gopkg.in/gographics/imagick.v3/imagick"
 )
 
-const FORMAT_JPG = "jpg"
-const FORMAT_PNG = "png"
-const FORMAT_TIF = "tiff"
+type fileformat string
+
+const FORMAT_JPG fileformat = "jpg"
+const FORMAT_PNG fileformat = "png"
+const FORMAT_TIF fileformat = "tiff"
 
 const CW float64 = 90
 const CCW float64 = 270
-
-type Rotator interface {
-	Rotate(deg float64) error
-}
-
-type Converter interface {
-	// eg os.file
-	io.Writer
-	io.Closer
-	io.Reader
-	Scaler
-	Rotator
-	Destroy()
-	//	Wand() *imagick.MagickWand
-	Convert() error
-}
-
-type imageConverter struct {
-	wand   *imagick.MagickWand
-	opts   ConverterOptions
-	writer io.WriteCloser
-}
-
-type ConverterOptions struct {
-	Compression        imagick.CompressionType
-	CompressionQuality uint
-	TargetFormat       string
-	//	CompressionFilter  imagick.FilterType
-}
 
 /*
 Defaults to JPEG format and compression with 100 quality
@@ -56,7 +23,6 @@ func DefaultOptions() ConverterOptions {
 		TargetFormat:       FORMAT_JPG,
 		Compression:        imagick.COMPRESSION_JPEG,
 		CompressionQuality: 100,
-		//	CompressionFilter:  imagick.FILTER_LANCZOS,
 	}
 	return o
 }
@@ -76,104 +42,4 @@ func NewConverter(output io.WriteCloser, opts ConverterOptions) (Converter, erro
 	}
 
 	return c, nil
-}
-
-func (i *imageConverter) Rotate(deg float64) error {
-	pw := imagick.NewPixelWand()
-	defer pw.Destroy()
-	return i.wand.RotateImage(pw, float64(deg))
-}
-
-func (i *imageConverter) Write(p []byte) (n int, err error) {
-	return i.writer.Write(p)
-}
-
-func (i *imageConverter) Close() error {
-	return i.writer.Close()
-}
-
-// Reads p into wand as imageblob
-func (i *imageConverter) Read(p []byte) (n int, err error) {
-	return len(p), i.wand.ReadImageBlob(p)
-}
-
-func (i *imageConverter) ImageBlob() ([]byte, error) {
-	blob := i.wand.GetImageBlob()
-	if len(blob) == 0 {
-		return nil, fmt.Errorf("empty image in wand")
-	}
-	return blob, nil
-}
-
-// Deallocates all memory associated with the converter and destroys the MagicWand
-func (i *imageConverter) Destroy() {
-	imgNumber := i.wand.GetNumberImages()
-	if imgNumber == 0 {
-		i.wand.Destroy()
-		return
-	}
-	for j := 0; j < int(imgNumber); j++ {
-		img := i.wand.GetImageFromMagickWand()
-		if img == nil {
-			break
-		}
-		i.wand.DestroyImage(img)
-	}
-}
-
-func (j *imageConverter) WriteToFile(filename string) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	j.wand.ResetIterator()
-	blob := j.wand.GetImageBlob()
-	if _, err := f.Write(blob); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (i *imageConverter) Convert() error {
-	if err := i.wand.SetFormat(i.opts.TargetFormat); err != nil {
-		return err
-	}
-	if err := i.wand.SetImageCompression(i.opts.Compression); err != nil {
-		return err
-	}
-	if err := i.wand.SetImageCompressionQuality(i.opts.CompressionQuality); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (i imageConverter) ScaleXY(x, y int) image.Image {
-	blob, _ := i.ImageBlob()
-	src, _ := jpeg.Decode(bytes.NewReader(blob))
-	dst := image.NewRGBA(image.Rect(0, 0, src.Bounds().Max.X/2, src.Bounds().Max.Y/2))
-	draw.NearestNeighbor.Scale(dst, dst.Rect, src, src.Bounds(), draw.Over, nil)
-	jpeg.Encode(i.writer, dst, &jpeg.Options{Quality: int(100)})
-	return dst
-}
-
-func (i imageConverter) ScalePercent(p int) image.Image {
-	blob, _ := i.ImageBlob()
-	src, _ := jpeg.Decode(bytes.NewReader(blob))
-	nx, ny := newXYPercent(src.Bounds().Max.X, src.Bounds().Max.Y, float64(p))
-	dst := image.NewRGBA(image.Rect(0, 0, nx, ny))
-	draw.NearestNeighbor.Scale(dst, dst.Rect, src, src.Bounds(), draw.Over, nil)
-	jpeg.Encode(i.writer, dst, &jpeg.Options{Quality: int(100)})
-	return dst
-}
-
-func newXYPercent(x, y int, percent float64) (int, int) {
-	nx := int((percent / 100) * float64(x))
-	ny := int((percent / 100) * float64(y))
-	fmt.Println(nx, ny)
-	return nx, ny
-}
-
-type Scaler interface {
-	ScaleXY(x, y int) image.Image
-	ScalePercent(p int) image.Image
 }

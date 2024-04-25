@@ -1,4 +1,4 @@
-package examples
+package main
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"time"
 
 	gomagick "github.com/antalmiklos/go-magick"
-	"github.com/pkg/browser"
 	"gopkg.in/gographics/imagick.v3/imagick"
 )
 
@@ -17,21 +16,25 @@ func main() {
 			fmt.Println("ImageMagick not properly installed, please consult the manual!", r)
 		}
 	}()
-	defer imagick.Terminate()
+	defer func() {
+		fmt.Println("terminating")
+		imagick.Terminate()
+		fmt.Println("terminated")
+	}()
 
-	outfile, err := os.Create("out.jpg")
+	outfile, err := os.Create("out.png")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer outfile.Close()
-	c, err := gomagick.NewConverter(outfile, gomagick.ConverterOptions{
-		Compression:        imagick.COMPRESSION_NO,
-		CompressionQuality: 100,
-		TargetFormat:       gomagick.FORMAT_JPG,
-	})
+	c, err := gomagick.NewConverter(outfile, gomagick.ConverterOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	c.WithTargetFormat(gomagick.FORMAT_PNG)
+	c.WithQuality(30)
+
 	defer c.Destroy()
 	b, _ := os.ReadFile("a.cr3")
 	c.Read(b)
@@ -41,15 +44,22 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("conversion done in: ", time.Since((cstart)))
+	fmt.Println("starting scaling")
+	cstart = time.Now()
+	if err := c.ScalePercent(50); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("scaling done in: ", time.Since((cstart)))
 	fmt.Println("starting rotation")
 	cstart = time.Now()
 	if err := c.Rotate(gomagick.CCW); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("rotation done in: ", time.Since((cstart)))
-	fmt.Println("starting scaling")
-	cstart = time.Now()
-	c.ScalePercent(80)
-	fmt.Println("scaling done in: ", time.Since((cstart)))
-	browser.OpenFile(outfile.Name())
+	c.Encode()
+	stats, err := os.Stat(outfile.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("file created %s\nsize: %dMb\n", stats.Name(), stats.Size()/1024/1024)
 }
